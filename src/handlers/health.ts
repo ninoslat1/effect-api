@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { Env } from "src/classes/env";
+import { Env } from "src/services/env.js";
 
 export const healthHandler = Effect.gen(function* () {
   const env = yield* Env;

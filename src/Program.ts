@@ -1,31 +1,21 @@
-import { Effect, Layer } from "effect";
-import { Schema as S } from "@effect/schema";
-import { Env } from "./classes/env";
-import { env } from "./libs/env";
+import { Effect } from "effect";
+import { Env, EnvLive } from "./services/env.js";
 import { Hono } from "hono";
-import { HealthResponse } from "./classes/health";
-import { healthHandler } from "./handlers/health";
 import { serve } from "@hono/node-server";
-
-const EnvLive = Layer.succeed(Env, { appName: "Effect API" });
+import { apiRoutes } from "./routes/index.js";
 
 const app = new Hono();
-app.get("/health", async (c) => {
-  const program = healthHandler.pipe(
-    Effect.flatMap((data) => S.decode(HealthResponse)(data))
-  );
+app.route("/api", apiRoutes);
 
-  const result = await Effect.runPromise(Effect.provide(program, EnvLive));
+const startServer = Effect.gen(function* () {
+  const env = yield* Env;
 
-  return c.json(result);
+  serve({
+    port: env.port,
+    fetch: app.fetch,
+  });
+
+  console.log(`🚀 Effect API running on http://localhost:${env.port}`);
 });
 
-Effect.runPromise(
-  Effect.provide(
-    Effect.sync(() => {
-      serve({ port: env.APP_HOST, fetch: app.fetch });
-      console.log(`Effect API run on http://localhost:${env.APP_HOST}`);
-    }),
-    EnvLive
-  )
-);
+Effect.runPromise(Effect.provide(startServer, EnvLive));
